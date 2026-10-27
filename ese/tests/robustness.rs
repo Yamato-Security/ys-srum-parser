@@ -336,3 +336,41 @@ mod properties {
         }
     }
 }
+
+/// Long values are read up to the row's limit; the rest become NULL with a
+/// problem, so a record referring to one large long value many times cannot
+/// make the reader allocate a copy for each reference.
+#[test]
+fn long_values_stop_at_the_row_limit() {
+    let db = Database::open(support::fixture("WebCacheV01.dat")).unwrap();
+    let table = db
+        .tables
+        .iter()
+        .find(|t| {
+            t.long_value_root.is_some()
+                && db.rows(&t.name).is_ok_and(|rows| {
+                    rows.flat_map(|row| row.values)
+                        .any(|v| matches!(&v, ese::Value::Binary(b) if b.len() > 1000))
+                })
+        })
+        .expect("a table with long values");
+    let read = |limit: usize| {
+        let mut rows = db.rows(&table.name).unwrap().long_value_limit(limit);
+        let values: Vec<ese::Value> = rows.by_ref().flat_map(|row| row.values).collect();
+        (values, rows.problems().to_vec())
+    };
+    let (whole, problems) = read(ese::ROW_LONG_VALUE_LIMIT);
+    assert!(
+        problems.iter().all(|p| !p.contains("limit")),
+        "{problems:?}"
+    );
+    let (limited, problems) = read(0);
+    let nulls = |values: &[ese::Value]| values.iter().filter(|v| v.is_null()).count();
+    assert!(nulls(&limited) > nulls(&whole));
+    assert!(
+        problems
+            .iter()
+            .any(|p| p.contains("reached the limit of 0 bytes")),
+        "{problems:?}"
+    );
+}
