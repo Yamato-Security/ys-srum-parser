@@ -1,12 +1,15 @@
 [package]
 name = "sootmark-srum"
-version = "0.1.0"
+version = "0.2.0"
+# Yamato Security's fork of the upstream crate (https://github.com/Sootmark/srum): not published
+# under the upstream name.
+publish = false
 edition = "2021"
 rust-version = "1.80"
-description = "Windows System Resource Usage Monitor (SRUM, SRUDB.dat) for forensics: network usage, application resource usage and network connectivity per program and user, read with sootmark-ese."
+description = "Windows System Resource Usage Monitor (SRUM, SRUDB.dat) for forensics: every provider table (network and application usage, connectivity, energy, the application timeline, Windows Server's tables) per program and user, decoded as SrumECmd does, read with sootmark-ese."
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/Sootmark/srum"
-homepage = "https://sootmark.com"
+repository = "https://github.com/Yamato-Security/ys-srum-parser"
+homepage = "https://github.com/Yamato-Security/ys-srum-parser"
 keywords = ["forensics", "dfir", "incident-response", "srum", "windows"]
 # Sources only: test fixtures stay in the repository.
 include = ["/src", "/README.md", "/LICENSE-APACHE", "/LICENSE-MIT"]
@@ -15,7 +18,7 @@ include = ["/src", "/README.md", "/LICENSE-APACHE", "/LICENSE-MIT"]
 name = "srum"
 
 [dependencies]
-ese = { package = "sootmark-ese", path = "../ese", version = "0.1" }
+ese = { package = "sootmark-ese", path = "../ese", version = "0.2" }
 
 [dev-dependencies]
 # gzip, for the test databases stored compressed.
@@ -33,10 +36,3 @@ cast_possible_truncation = "allow"
 cast_sign_loss = "allow"
 cast_possible_wrap = "allow"
 cast_precision_loss = "allow"
-
-# The test database is 10 MB once decompressed: an optimised inflater and
-# reader keep the test run short.
-[profile.dev.package.sootmark-common]
-opt-level = 3
-[profile.dev.package.sootmark-ese]
-opt-level = 3
