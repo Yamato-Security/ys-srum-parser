@@ -16,7 +16,7 @@ name = "srum"
 
 [dependencies]
 common = { package = "sootmark-common", version = "0.3.7" }
-ese = { package = "sootmark-ese", version = "0.1.0" }
+ese = { package = "sootmark-ese", path = "../ese", version = "0.1" }
 
 [dev-dependencies]
 proptest = "1"

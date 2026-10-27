@@ -1,0 +1,3 @@
+[workspace]
+members = ["ese", "srum"]
+resolver = "2"
