@@ -148,6 +148,7 @@ fn column_type_number(column_type: ese::ColumnType) -> u32 {
         LongLong => 15,
         Guid => 16,
         UnsignedShort => 17,
+        UnsignedLongLong => 18,
         Unknown(raw) => raw,
     }
 }

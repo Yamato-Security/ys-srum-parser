@@ -24,6 +24,8 @@ pub enum Value {
     /// A `LongLong` column (in many databases a FILETIME: 100 ns since
     /// 1601).
     I64(i64),
+    /// An `UnsignedLongLong` column.
+    U64(u64),
     /// A `Currency` column: units of 1/10,000.
     Currency(i64),
     /// An `IEEESingle` column.
@@ -78,6 +80,7 @@ impl Value {
             Self::I32(value) => Some(value.into()),
             Self::U32(value) => Some(value.into()),
             Self::I64(value) | Self::Currency(value) => Some(value),
+            Self::U64(value) => i64::try_from(value).ok(),
             _ => None,
         }
     }
@@ -115,6 +118,7 @@ pub(crate) fn decode(column: &Column, bytes: &[u8]) -> Result<Value, String> {
         ColumnType::UnsignedLong => Value::U32(u32::from_le_bytes(le(bytes))),
         ColumnType::IeeeSingle => Value::F32(f32::from_le_bytes(le(bytes))),
         ColumnType::LongLong => Value::I64(i64::from_le_bytes(le(bytes))),
+        ColumnType::UnsignedLongLong => Value::U64(u64::from_le_bytes(le(bytes))),
         ColumnType::Currency => Value::Currency(i64::from_le_bytes(le(bytes))),
         ColumnType::IeeeDouble => Value::F64(f64::from_le_bytes(le(bytes))),
         ColumnType::DateTime => Value::DateTime(f64::from_le_bytes(le(bytes))),
@@ -171,6 +175,10 @@ mod tests {
         assert_eq!(
             decoded(ColumnType::Long, &(-5i32).to_le_bytes()),
             Ok(Value::I32(-5))
+        );
+        assert_eq!(
+            decoded(ColumnType::UnsignedLongLong, &u64::MAX.to_le_bytes()),
+            Ok(Value::U64(u64::MAX))
         );
         assert_eq!(
             decoded(ColumnType::Currency, &7i64.to_le_bytes()),
