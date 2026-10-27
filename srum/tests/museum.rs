@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::io::Read;
 
-use srum::{Kind, Srum, Time};
+use srum::{Context, Kind, Srum, Time, Value};
 
 fn fixture(name: &str) -> Vec<u8> {
     let path = format!(
@@ -99,6 +99,25 @@ fn windows_10() {
         .find(|e| e.kind == Some(Kind::NetworkUsage))
         .unwrap();
     assert!(network.interface_type().is_some());
+    assert_eq!((&network.user_name, &network.profile_name), (&None, &None));
+
+    // names from a SOFTWARE hive: the account and the network of that entry
+    let profile = network
+        .value("L2ProfileId")
+        .and_then(Value::as_i64)
+        .unwrap();
+    let context = Context {
+        user_names: HashMap::from([(network.user.clone().unwrap(), "rathbun".to_owned())]),
+        network_profiles: HashMap::from([(profile, "HomeWiFi".to_owned())]),
+    };
+    let named = srum::read_with(&fixture("win10_rathbunvm.dat.gz"), &context).unwrap();
+    let named = named
+        .entries
+        .iter()
+        .find(|e| e.table == network.table && e.id == network.id)
+        .unwrap();
+    assert_eq!(named.user_name.as_deref(), Some("rathbun"));
+    assert_eq!(named.profile_name.as_deref(), Some("HomeWiFi"));
 }
 
 #[test]

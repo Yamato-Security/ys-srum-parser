@@ -240,7 +240,8 @@ pub struct Entry {
     pub kind: Option<Kind>,
     /// `AutoIncId`.
     pub id: Option<i64>,
-    /// `TimeStamp`: when the figures were recorded (UTC, to the minute).
+    /// `TimeStamp`: when the figures were recorded (UTC, rounded to the
+    /// millisecond as SrumECmd does).
     pub time: Option<Time>,
     /// `AppId`, as written.
     pub app_id: Option<i64>,
@@ -256,6 +257,9 @@ pub struct Entry {
     pub user: Option<String>,
     /// The account's name, from the [`Context`].
     pub user_name: Option<String>,
+    /// The wireless network `L2ProfileId` names (the network tables), from
+    /// the [`Context`].
+    pub profile_name: Option<String>,
     /// The table's other columns, by name, in table order.
     pub values: Vec<(String, Value)>,
 }
@@ -438,6 +442,8 @@ fn entry(table: &ese::Table, values: &[Value], ids: &IdMap, context: &Context) -
             .as_ref()
             .and_then(|sid| context.user_names.get(sid).cloned()),
         user,
+        profile_name: integer("L2ProfileId")
+            .and_then(|id| context.network_profiles.get(&id).cloned()),
         values: table
             .columns
             .iter()
@@ -445,14 +451,5 @@ fn entry(table: &ese::Table, values: &[Value], ids: &IdMap, context: &Context) -
             .filter(|(column, _)| !COMMON_COLUMNS.contains(&column.name.as_str()))
             .map(|(column, value)| (column.name.clone(), value.clone()))
             .collect(),
-    }
-}
-
-impl Srum {
-    /// The wireless network a `L2ProfileId` names, from the [`Context`].
-    #[must_use]
-    pub fn profile_name<'c>(context: &'c Context, entry: &Entry) -> Option<&'c str> {
-        let id = entry.value("L2ProfileId").and_then(Value::as_i64)?;
-        context.network_profiles.get(&id).map(String::as_str)
     }
 }
