@@ -139,7 +139,6 @@ impl Kind {
     ];
 
     /// Every provider this crate knows.
-    #[must_use]
     pub fn all() -> impl Iterator<Item = Self> {
         Self::TABLES.iter().map(|&(_, kind)| kind)
     }
