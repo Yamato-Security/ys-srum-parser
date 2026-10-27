@@ -15,10 +15,11 @@ include = ["/src", "/README.md", "/LICENSE-APACHE", "/LICENSE-MIT"]
 name = "srum"
 
 [dependencies]
-common = { package = "sootmark-common", version = "0.3.7" }
 ese = { package = "sootmark-ese", path = "../ese", version = "0.1" }
 
 [dev-dependencies]
+# gzip, for the test databases stored compressed.
+common = { package = "sootmark-common", version = "0.3.7" }
 proptest = "1"
 
 [lints.rust]

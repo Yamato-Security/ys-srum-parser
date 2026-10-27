@@ -1,8 +1,7 @@
 //! plaso's `SRUDB.dat` (Apache-2.0, `tests/fixtures/plaso/`, stored
 //! gzip-compressed): the entries and values plaso's own SRUM tests expect.
 
-use common::time::Ts;
-use srum::{Entry, Kind, Srum};
+use srum::{Entry, Kind, Srum, Time};
 
 fn srum() -> Srum {
     let compressed = std::fs::read(concat!(
@@ -22,8 +21,12 @@ fn srum() -> Srum {
     srum::read(&data).unwrap()
 }
 
-fn iso(ts: Option<Ts>) -> String {
-    ts.and_then(|ts| ts.to_iso8601()).unwrap_or_default()
+fn iso(time: Option<Time>) -> String {
+    time.map(Time::to_iso8601).unwrap_or_default()
+}
+
+fn app(entry: &Entry) -> Option<&str> {
+    entry.app.as_ref().map(|app| app.name.as_str())
 }
 
 fn find(srum: &Srum, kind: Kind, id: i64) -> &Entry {
@@ -48,11 +51,12 @@ fn what_plaso_expects() {
     );
 
     let usage = find(&srum, Kind::ApplicationUsage, 22167);
-    assert_eq!(usage.app.as_deref(), Some("Memory Compression"));
+    assert_eq!(app(usage), Some("Memory Compression"));
     assert_eq!(iso(usage.time), "2017-11-05T11:32:00.0000000Z");
 
     let network = find(&srum, Kind::NetworkUsage, 3495);
-    assert_eq!(network.app.as_deref(), Some("DiagTrack"));
+    assert_eq!(app(network), Some("DiagTrack"));
+    assert_eq!(network.app_kind, Some(srum::IdKind::Service));
     assert_eq!(network.user.as_deref(), Some("S-1-5-18"));
     assert_eq!(
         network.value("BytesSent").and_then(ese::Value::as_i64),
@@ -66,15 +70,12 @@ fn what_plaso_expects() {
 
     let connectivity = find(&srum, Kind::NetworkConnectivity, 501);
     // plaso prints the raw id: the map doesn't name it.
-    assert_eq!(
-        (connectivity.app_id, connectivity.app.as_deref()),
-        (Some(1), None)
-    );
+    assert_eq!((connectivity.app_id, app(connectivity)), (Some(1), None));
     assert_eq!(iso(connectivity.time), "2017-11-05T13:33:00.0000000Z");
     let times = connectivity.times();
     assert_eq!(times.len(), 1);
     assert_eq!(
-        (times[0].0, iso(Some(times[0].1))),
+        (times[0].0, iso(times[0].1)),
         (
             "ConnectStartTime",
             "2017-11-05T10:30:48.1679714Z".to_owned()
@@ -88,13 +89,21 @@ fn every_provider_table_is_read() {
     let tables: std::collections::BTreeSet<&str> =
         srum.entries.iter().map(|e| e.table.as_str()).collect();
     assert!(tables.contains("{5C8CF1C7-7257-4F13-B223-970EF5939312}"));
-    // An unknown provider is kept, unnamed.
-    let unknown = srum
+    // The energy estimation provider: one binary column.
+    let estimation = srum
         .entries
         .iter()
         .find(|e| e.table == "{DA73FB89-2BEA-4DDC-86B8-6E048C6DA477}")
         .unwrap();
-    assert_eq!(unknown.kind, None);
-    assert!(unknown.value("BinaryData").is_some());
-    assert_eq!(srum.problems, Vec::<String>::new());
+    assert_eq!(estimation.kind, Some(Kind::EnergyEstimation));
+    assert!(estimation.value("BinaryData").is_some());
+    // The only problem: ids the map lacks (plaso prints them raw too).
+    assert_eq!(srum.problems.len(), 1, "{:?}", srum.problems);
+    assert!(srum.problems[0].ends_with("AppId / UserId values are not in SruDbIdMapTable"));
+    // Every table is listed, provider or not.
+    assert!(srum
+        .tables
+        .iter()
+        .any(|t| t.name == "SruDbIdMapTable" && !t.provider && t.rows > 0));
+    assert!(!srum.dirty);
 }
