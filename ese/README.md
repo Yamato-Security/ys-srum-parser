@@ -2,9 +2,11 @@
 
 Microsoft ESE ("JET Blue") database files, read without ESE: the System Resource Usage Monitor's `SRUDB.dat`, Internet Explorer and Edge `WebCacheV01.dat`, Windows Search `Windows.edb`, Active Directory `ntds.dit`, File History catalogs and the rest. Read from Joachim Metz's [format documentation](https://github.com/libyal/libesedb/blob/main/documentation/Extensible%20Storage%20Engine%20(ESE)%20Database%20File%20(EDB)%20format.asciidoc) and, for compressed values, Microsoft's [MS-XCA](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-xca/). Read-only, no dependencies, and the file is borrowed, not copied.
 
+Part of [ys-srum-parser](https://github.com/Yamato-Security/ys-srum-parser), Yamato Security's fork of Sootmark's [ese](https://github.com/Sootmark/ese).
+
 ```toml
 [dependencies]
-sootmark-ese = "0.1"
+ese = { package = "sootmark-ese", git = "https://github.com/Yamato-Security/ys-srum-parser", rev = "<commit>" }
 ```
 
 ```rust
@@ -26,14 +28,14 @@ for problem in db.problems.iter().chain(rows.problems()) {
 ## What you get
 
 - `Database::open(bytes)`: the header (format version and revision, page size from 2 to 32 KiB, database state, database time, when it was last shut down cleanly, attached and detached, the Windows version, repair count), from its shadow copy when the first is damaged; and the catalog (`MSysObjects`): every table with its columns (identifier, name, type, codepage, flags, size, record offset, default value), indexes (name, root page, flags, locale, key columns), long value tree and template table.
-- `db.rows(table)`: an iterator over the rows in key order (the primary index's), each with the leaf page holding it and one `Value` per column: `Null`, `Bool`, `U8`, `I16`, `U16`, `I32`, `U32`, `I64`, `Currency`, `F32`, `F64`, `DateTime` (an OLE automation date, in days), `Guid`, `Text`, `Binary`, `MultiValue`. Rows are read as the iterator advances, never all at once; names compare ignoring ASCII case, as in ESE.
+- `db.rows(table)`: an iterator over the rows in key order (the primary index's), each with the leaf page holding it and one `Value` per column: `Null`, `Bool`, `U8`, `I16`, `U16`, `I32`, `U32`, `I64`, `U64`, `Currency`, `F32`, `F64`, `DateTime` (an OLE automation date, in days), `Guid`, `Text`, `Binary`, `MultiValue`. Rows are read as the iterator advances, never all at once; names compare ignoring ASCII case, as in ESE.
 - Pages of both formats: the 40-byte header, and from Windows 7 the 80-byte header of 16 and 32 KiB pages with 15-bit tags and entry flags in the entries; page flags; the tag array; keys sharing the page's prefix; B+-trees walked from the root through branch pages; deleted (defunct) entries skipped.
 - Checksums verified on every page read, in the three formats: the original XOR, XOR and ECC (Exchange 2003 SP1, Windows Vista), and XOR and ECC per quarter of 16 and 32 KiB pages. A mismatch is reported; the page is still read.
 - Records: fixed columns and their NULL bitmap, variable columns, tagged columns in both layouts (from format revision 9 an offset array, the value's flags byte always present on large pages; before it one column after another), multi-values (offset arrays, long values among them, the two-value form), long values (4 or 8-byte identifiers, segments joined in order), and compressed values: 7-bit ASCII, 7-bit Unicode and Xpress (plain LZ77). Text in UTF-16, Windows-1252 or ASCII, the terminating NULs applications store dropped, 8-bit text stored in a UTF-16 column (as Windows Search does) recognised by its odd size.
 
 ## Damage is contained
 
-Evidence is hostile. Only a file that isn't an ESE database, or whose header can't be used (no signature in the header or its shadow, a page size ESE doesn't write, a streaming file), is an error. The rest is listed in `problems` and skipped: a dirty shutdown (the transaction logs are not replayed, so the latest changes may be missing), checksum mismatches, pages out of range or past the end of a truncated file, blank pages, cycles in a tree and pages claimed twice (every page is visited at most once per walk), pages of another tree or of a space tree, tags and entries outside their page, records whose header, offsets or values don't fit, values of the wrong size, multi-values and compressed data that don't decode, long values missing or cut short (the bytes before the damage are kept), catalog entries of tables it doesn't define. Nothing is allocated beyond what the input holds, and every walk ends.
+Evidence is hostile. Only a file that isn't an ESE database, or whose header can't be used (no signature in the header or its shadow, a page size ESE doesn't write, a streaming file), is an error. The rest is listed in `problems` and skipped: a dirty shutdown (the transaction logs are not replayed, so the latest changes may be missing), checksum mismatches, pages out of range or past the end of a truncated file, blank pages, cycles in a tree and pages claimed twice (every page is visited at most once per walk), pages of another tree or of a space tree, tags and entries outside their page, records whose header, offsets or values don't fit, values of the wrong size, multi-values and compressed data that don't decode, long values missing or cut short (the bytes before the damage are kept), catalog entries of tables it doesn't define. Nothing is allocated beyond what the input holds, but for long values: each reference to one is read on its own, so a row reads at most 256 MiB of them (`Rows::long_value_limit`), the rest NULL with a problem. Every walk ends.
 
 ## Not yet
 

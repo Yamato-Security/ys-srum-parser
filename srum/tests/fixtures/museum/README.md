@@ -1,7 +1,7 @@
 # DFIRArtifactMuseum SRUM databases
 
 Three `SRUDB.dat` files of [DFIRArtifactMuseum](https://github.com/AndrewRathbun/DFIRArtifactMuseum)
-(MIT License, `Windows/SRUM/`), stored gzip-compressed (`gzip -9n`), otherwise unmodified:
+(MIT License, `LICENSE` in this directory; `Windows/SRUM/`), stored gzip-compressed (`gzip -9n`), otherwise unmodified:
 
 | File | Source | SHA-256 of the uncompressed file |
 | --- | --- | --- |
