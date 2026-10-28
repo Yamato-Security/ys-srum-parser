@@ -126,11 +126,12 @@ fn match_length(
                     .checked_sub(LENGTH_IN_BYTE + LENGTH_IN_HALF_BYTE)
                     .ok_or("Xpress match length too short for its encoding")?;
             }
-            length += LENGTH_IN_BYTE;
+            // a 32-bit length can be close to usize::MAX on 32-bit targets
+            length = length.saturating_add(LENGTH_IN_BYTE);
         }
-        length += LENGTH_IN_HALF_BYTE;
+        length = length.saturating_add(LENGTH_IN_HALF_BYTE);
     }
-    Ok(length + MIN_MATCH)
+    Ok(length.saturating_add(MIN_MATCH))
 }
 
 #[cfg(test)]
@@ -155,6 +156,17 @@ mod tests {
             0xff, 0xff, 0xff, 0x1f, b'a', b'b', b'c', 0x17, 0x00, 0x0f, 0xff, 0x26, 0x01,
         ];
         assert_eq!(decompress(&input, 300).unwrap(), b"abc".repeat(100));
+    }
+
+    #[test]
+    fn a_32_bit_match_length_stops_at_the_declared_size() {
+        // A literal, then a match 1 back whose length takes every encoding
+        // up to 32 bits: 0xffff_ffff, more than the output may hold.
+        let input = [
+            0x00, 0x00, 0x00, 0x40, b'a', 0x07, 0x00, 0x0f, 0xff, 0x00, 0x00, 0xff, 0xff, 0xff,
+            0xff,
+        ];
+        assert_eq!(decompress(&input, 8).unwrap(), b"aaaaaaaa");
     }
 
     /// Bytes from hex.

@@ -1,12 +1,15 @@
 [package]
 name = "sootmark-ese"
-version = "0.1.1"
+version = "0.2.0"
+# Yamato Security's fork of the upstream crate (https://github.com/Sootmark/ese): not published
+# under the upstream name.
+publish = false
 edition = "2021"
 rust-version = "1.80"
 description = "Read-only reader of Microsoft ESE (JET Blue) database files for forensics (SRUM, WebCache, Windows Search, NTDS): header, checksums, B+-trees, the catalog, records, long values and compressed values, damage reported rather than fatal."
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/Sootmark/ese"
-homepage = "https://sootmark.com"
+repository = "https://github.com/Yamato-Security/ys-srum-parser"
+homepage = "https://github.com/Yamato-Security/ys-srum-parser"
 keywords = ["forensics", "dfir", "incident-response", "ese", "srum"]
 # Sources only: test fixtures stay in the repository.
 include = ["/src", "/README.md", "/LICENSE-APACHE", "/LICENSE-MIT"]
@@ -30,8 +33,3 @@ cast_possible_truncation = "allow"
 cast_sign_loss = "allow"
 cast_possible_wrap = "allow"
 cast_precision_loss = "allow"
-
-# The test databases are 130 MB once decompressed: an optimised inflater
-# keeps the test run short.
-[profile.dev.package.sootmark-common]
-opt-level = 3

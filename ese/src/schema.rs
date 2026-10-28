@@ -40,6 +40,8 @@ pub enum ColumnType {
     Guid,
     /// A 16-bit unsigned integer.
     UnsignedShort,
+    /// A 64-bit unsigned integer (Windows 10 and later).
+    UnsignedLongLong,
     /// A value this crate doesn't know; its bytes read as binary.
     Unknown(u32),
 }
@@ -65,6 +67,7 @@ impl ColumnType {
             15 => Self::LongLong,
             16 => Self::Guid,
             17 => Self::UnsignedShort,
+            18 => Self::UnsignedLongLong,
             other => Self::Unknown(other),
         }
     }
@@ -76,7 +79,11 @@ impl ColumnType {
             Self::Bit | Self::UnsignedByte => Some(1),
             Self::Short | Self::UnsignedShort => Some(2),
             Self::Long | Self::IeeeSingle | Self::UnsignedLong => Some(4),
-            Self::Currency | Self::IeeeDouble | Self::DateTime | Self::LongLong => Some(8),
+            Self::Currency
+            | Self::IeeeDouble
+            | Self::DateTime
+            | Self::LongLong
+            | Self::UnsignedLongLong => Some(8),
             Self::Guid => Some(16),
             _ => None,
         }

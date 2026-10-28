@@ -1,0 +1,10 @@
+[workspace]
+members = ["ese", "srum"]
+resolver = "2"
+
+# The test databases are 150 MB once decompressed: an optimised inflater and
+# reader keep the test run short.
+[profile.dev.package.sootmark-common]
+opt-level = 3
+[profile.dev.package.sootmark-ese]
+opt-level = 3

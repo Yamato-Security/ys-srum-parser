@@ -54,7 +54,7 @@ mod value;
 mod xpress;
 
 pub use header::{DatabaseState, FileType, Header, LogTime};
-pub use rows::{Row, Rows};
+pub use rows::{Row, Rows, ROW_LONG_VALUE_LIMIT};
 pub use schema::{Column, ColumnKind, ColumnType, Index, Table};
 pub use value::Value;
 

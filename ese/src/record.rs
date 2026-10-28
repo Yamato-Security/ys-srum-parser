@@ -438,7 +438,7 @@ mod tests {
         damaged[second_offset] = 0xff; // the first value now ends past the record
         let (record, problem) =
             Record::parse(&damaged, TaggedFormat::Offsets { extended: false }).unwrap();
-        assert!(record.tagged.is_empty());
+        assert_eq!(record.tagged, []);
         assert!(problem.unwrap().contains("outside the record"));
     }
 }

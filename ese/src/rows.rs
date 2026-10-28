@@ -49,7 +49,14 @@ pub struct Rows<'a> {
     cursor: Cursor<'a>,
     /// The table's long value tree, read when the first long value is.
     long_values: Option<LongValues<'a>>,
+    /// Long value bytes read for the current row.
+    row_long_value_bytes: usize,
+    /// The most long value bytes one row may read.
+    long_value_limit: usize,
 }
+
+/// The default of [`Rows::long_value_limit`]: 256 MiB.
+pub const ROW_LONG_VALUE_LIMIT: usize = 256 * 1024 * 1024;
 
 impl<'a> Rows<'a> {
     pub(crate) fn new(pages: &'a Pages<'a>, table: &'a Table) -> Self {
@@ -58,7 +65,20 @@ impl<'a> Rows<'a> {
             table,
             cursor: Cursor::new(pages, table.root_page),
             long_values: None,
+            row_long_value_bytes: 0,
+            long_value_limit: ROW_LONG_VALUE_LIMIT,
         }
+    }
+
+    /// Read at most `bytes` of long values per row (default
+    /// [`ROW_LONG_VALUE_LIMIT`]); the long values after that are NULL, with a
+    /// problem. Every reference to a long value is read on its own, so a
+    /// damaged or crafted record referring to one large long value thousands
+    /// of times would otherwise need thousands of copies of it.
+    #[must_use]
+    pub fn long_value_limit(mut self, bytes: usize) -> Self {
+        self.long_value_limit = bytes;
+        self
     }
 
     /// What went wrong so far, in the order met.
@@ -68,6 +88,7 @@ impl<'a> Rows<'a> {
     }
 
     fn row(&mut self, entry: &Entry<'a>) -> Row {
+        self.row_long_value_bytes = 0;
         let context = format!("table {}, record on page {}", self.table.name, entry.page);
         let record = match Record::parse(entry.node.data, self.pages.tagged_format()) {
             Ok((record, damage)) => {
@@ -216,7 +237,14 @@ impl<'a> Rows<'a> {
                 unread.insert(long_values)
             }
         };
+        if self.row_long_value_bytes >= self.long_value_limit {
+            return Err(format!(
+                "the row's long values reached the limit of {} bytes, the rest are not read",
+                self.long_value_limit
+            ));
+        }
         let (data, damage) = long_values.get(id, compressed)?;
+        self.row_long_value_bytes = self.row_long_value_bytes.saturating_add(data.len());
         problems.extend(damage);
         Ok(data)
     }
