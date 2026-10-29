@@ -4,6 +4,24 @@ use crate::bytes::array_at;
 use crate::schema::{Column, ColumnType};
 use crate::text;
 
+/// How a column's value in a row was read: what a [`Value::Null`] stands for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ValueState {
+    /// Read and decoded.
+    Parsed,
+    /// NULL in the database: the record holds no value.
+    Null,
+    /// Of a column type with no decoding (`SLV`, `Nil` or an unknown type): its bytes, as
+    /// [`Value::Binary`].
+    Unsupported,
+    /// Stored but not read: a value of the wrong size, a damaged record, a long value missing or
+    /// cut short, data that doesn't decompress (the problems say what). NULL, or a
+    /// multi-value with a NULL for each of its values that wasn't read.
+    Damaged,
+    /// Not a column of the table (asked for by name).
+    Absent,
+}
+
 /// A column's value in a row.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -94,6 +112,14 @@ impl Value {
             _ => None,
         }
     }
+}
+
+/// Whether values of `kind` are only kept as bytes, not decoded.
+pub(crate) fn unsupported(kind: ColumnType) -> bool {
+    matches!(
+        kind,
+        ColumnType::Slv | ColumnType::Nil | ColumnType::Unknown(_)
+    )
 }
 
 /// `bytes` as a value of `column`.

@@ -28,6 +28,21 @@ proptest! {
     }
 
     #[test]
+    fn the_database_damaged_with_value_states_and_bytes(flips in proptest::collection::vec((any::<usize>(), any::<u8>()), 1..200)) {
+        let mut data = fixture();
+        for (at, byte) in flips {
+            let at = at % data.len();
+            data[at] = byte;
+        }
+        let options = srum::Options { value_states: true, raw_values: true };
+        if let Ok(srum) = srum::read_with_options(&data, &srum::Context::default(), &options) {
+            // a value that wasn't read is reported
+            let damaged = srum.entries.iter().flat_map(|e| &e.cells).any(|c| c.state == srum::ValueState::Damaged);
+            prop_assert!(!damaged || !srum.problems.is_empty());
+        }
+    }
+
+    #[test]
     fn the_database_damaged(flips in proptest::collection::vec((any::<usize>(), any::<u8>()), 1..200)) {
         let mut data = fixture();
         for (at, byte) in flips {

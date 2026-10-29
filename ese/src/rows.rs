@@ -10,7 +10,7 @@ use crate::long_value::LongValues;
 use crate::pager::Pages;
 use crate::record::{Record, Tagged};
 use crate::schema::{Column, ColumnKind, Table};
-use crate::value::{self, Value};
+use crate::value::{self, Value, ValueState};
 
 /// A multi-value offset with this bit set locates a long value identifier.
 const SEPARATED_VALUE: u16 = 0x8000;
@@ -26,6 +26,13 @@ pub struct Row {
     /// One value per column, in the order of [`Table::columns`]: NULL when
     /// not set, or when it couldn't be read (the problems say why).
     pub values: Vec<Value>,
+    /// How each value was read, in the same order: what a NULL stands for.
+    pub states: Vec<ValueState>,
+    /// The bytes each value was decoded from (a long value's whole data,
+    /// decompressed), in the same order, `None` for a value with no bytes
+    /// (NULL, or damage before any could be read). Empty unless
+    /// [`Rows::keep_raw`].
+    pub raw: Vec<Option<Vec<u8>>>,
 }
 
 impl Row {
@@ -35,7 +42,20 @@ impl Row {
     pub fn get<'r>(&'r self, table: &Table, name: &str) -> Option<&'r Value> {
         self.values.get(table.column_index(name)?)
     }
+
+    /// How the value of the column named `name` of `table` was read;
+    /// [`ValueState::Absent`] when the table has no such column.
+    #[must_use]
+    pub fn state(&self, table: &Table, name: &str) -> ValueState {
+        table
+            .column_index(name)
+            .and_then(|at| self.states.get(at).copied())
+            .unwrap_or(ValueState::Absent)
+    }
 }
+
+/// A value, how it was read, and its bytes when they are kept.
+type Cell = (Value, ValueState, Option<Vec<u8>>);
 
 /// The rows of a table, in key order (the order of its primary index).
 ///
@@ -53,6 +73,8 @@ pub struct Rows<'a> {
     row_long_value_bytes: usize,
     /// The most long value bytes one row may read.
     long_value_limit: usize,
+    /// Keep each value's bytes ([`Row::raw`]).
+    keep_raw: bool,
 }
 
 /// The default of [`Rows::long_value_limit`]: 256 MiB.
@@ -67,7 +89,17 @@ impl<'a> Rows<'a> {
             long_values: None,
             row_long_value_bytes: 0,
             long_value_limit: ROW_LONG_VALUE_LIMIT,
+            keep_raw: false,
         }
+    }
+
+    /// Keep the bytes each value was decoded from, in [`Row::raw`]: for
+    /// checking a value against its source. Off by default: a row's values
+    /// then take twice the memory.
+    #[must_use]
+    pub fn keep_raw(mut self, keep: bool) -> Self {
+        self.keep_raw = keep;
+        self
     }
 
     /// Read at most `bytes` of long values per row (default
@@ -99,36 +131,45 @@ impl<'a> Rows<'a> {
             }
             Err(damage) => {
                 self.cursor.problems.push(format!("{context}: {damage}"));
+                let columns = self.table.columns.len();
                 return Row {
                     page: entry.page,
-                    values: vec![Value::Null; self.table.columns.len()],
+                    values: vec![Value::Null; columns],
+                    states: vec![ValueState::Damaged; columns],
+                    raw: if self.keep_raw {
+                        vec![None; columns]
+                    } else {
+                        Vec::new()
+                    },
                 };
             }
         };
         let table = self.table;
-        let values = table
-            .columns
-            .iter()
-            .map(|column| {
-                let mut problems = Vec::new();
-                let value = self.value(&record, column, &mut problems);
-                let column_context =
-                    |problem| format!("{context}, column {}: {problem}", column.name);
-                self.cursor
-                    .problems
-                    .extend(problems.into_iter().map(column_context));
-                value
-            })
-            .collect();
-        Row {
+        let mut row = Row {
             page: entry.page,
-            values,
+            values: Vec::with_capacity(table.columns.len()),
+            states: Vec::with_capacity(table.columns.len()),
+            raw: Vec::new(),
+        };
+        for column in &table.columns {
+            let mut problems = Vec::new();
+            let (value, state, raw) = self.value(&record, column, &mut problems);
+            let column_context = |problem| format!("{context}, column {}: {problem}", column.name);
+            self.cursor
+                .problems
+                .extend(problems.into_iter().map(column_context));
+            row.values.push(value);
+            row.states.push(state);
+            if self.keep_raw {
+                row.raw.push(raw);
+            }
         }
+        row
     }
 
-    /// `column`'s value in `record`; what went wrong is added to
-    /// `problems`.
-    fn value(&mut self, record: &Record<'a>, column: &Column, problems: &mut Vec<String>) -> Value {
+    /// `column`'s value in `record`, how it was read and its bytes; what
+    /// went wrong is added to `problems`.
+    fn value(&mut self, record: &Record<'a>, column: &Column, problems: &mut Vec<String>) -> Cell {
         let stored = match column.kind() {
             ColumnKind::Fixed => record.fixed(column),
             ColumnKind::Variable => record.variable(column.id),
@@ -142,15 +183,12 @@ impl<'a> Rows<'a> {
                     .then_some(column.from_template);
                 return match record.tagged(column.id, derived) {
                     Some(tagged) => self.tagged_value(tagged, column, problems),
-                    None => Value::Null,
+                    None => (Value::Null, ValueState::Null, None),
                 };
             }
         };
-        match stored {
-            Ok(Some(bytes)) => or_null(value::decode(column, bytes), problems),
-            Ok(None) => Value::Null,
-            Err(problem) => or_null(Err(problem), problems),
-        }
+        let stored = stored.map(|bytes| bytes.map(Cow::Borrowed));
+        cell(column, stored, self.keep_raw, problems)
     }
 
     /// A tagged column's value. Compression covers a long value's every
@@ -160,27 +198,38 @@ impl<'a> Rows<'a> {
         tagged: &Tagged<'a>,
         column: &Column,
         problems: &mut Vec<String>,
-    ) -> Value {
+    ) -> Cell {
         let flags = tagged.flags;
         let multi = flags.is_multi_value() || flags.is_two_values();
         let compressed_whole = flags.is_compressed() && (flags.is_long_value() || !multi);
-        let data = match self.plain(
+        let data = self.plain(
             tagged.data,
             flags.is_long_value(),
             compressed_whole,
             problems,
-        ) {
-            Ok(data) => data,
-            Err(problem) => return or_null(Err(problem), problems),
-        };
+        );
         if !multi {
-            return or_null(value::decode(column, &data), problems);
+            return cell(column, data.map(Some), self.keep_raw, problems);
         }
+        let data = match data {
+            Ok(data) => data,
+            Err(problem) => return cell(column, Err(problem), self.keep_raw, problems),
+        };
+        let raw = || self.keep_raw.then(|| data.to_vec());
         let items = match split_multi_value(&data, flags.is_two_values()) {
             Ok(items) => items,
-            Err(problem) => return or_null(Err(problem), problems),
+            Err(problem) => {
+                problems.push(problem);
+                return (Value::Null, ValueState::Damaged, raw());
+            }
         };
+        let raw = raw();
         let compressed_first = flags.is_compressed() && !compressed_whole;
+        let mut state = if value::unsupported(column.column_type) {
+            ValueState::Unsupported
+        } else {
+            ValueState::Parsed
+        };
         let values = items
             .into_iter()
             .enumerate()
@@ -190,10 +239,14 @@ impl<'a> Rows<'a> {
                     .plain(item.data, item.separated, compressed, problems)
                     .and_then(|bytes| value::decode(column, &bytes))
                     .map_err(|problem| format!("value {index}: {problem}"));
-                or_null(value, problems)
+                value.unwrap_or_else(|problem| {
+                    problems.push(problem);
+                    state = ValueState::Damaged;
+                    Value::Null
+                })
             })
             .collect();
-        Value::MultiValue(values)
+        (Value::MultiValue(values), state, raw)
     }
 
     /// The plain bytes of stored `data`: the long value it identifies, or
@@ -250,12 +303,33 @@ impl<'a> Rows<'a> {
     }
 }
 
-/// `value`, or NULL with the problem added to `problems`.
-fn or_null(value: Result<Value, String>, problems: &mut Vec<String>) -> Value {
-    value.unwrap_or_else(|problem| {
-        problems.push(problem);
-        Value::Null
-    })
+/// The value of `column` stored as `stored` (`None`: NULL), how it was read,
+/// and, when `keep_raw`, its bytes; what went wrong is added to `problems`.
+/// The bytes are those stored, also when they don't decode; there are none
+/// for a NULL or when the damage came before any could be read.
+fn cell(
+    column: &Column,
+    stored: Result<Option<Cow<'_, [u8]>>, String>,
+    keep_raw: bool,
+    problems: &mut Vec<String>,
+) -> Cell {
+    let bytes = match stored {
+        Ok(Some(bytes)) => bytes,
+        Ok(None) => return (Value::Null, ValueState::Null, None),
+        Err(problem) => {
+            problems.push(problem);
+            return (Value::Null, ValueState::Damaged, None);
+        }
+    };
+    let (value, state) = match value::decode(column, &bytes) {
+        Ok(value) if value::unsupported(column.column_type) => (value, ValueState::Unsupported),
+        Ok(value) => (value, ValueState::Parsed),
+        Err(problem) => {
+            problems.push(problem);
+            (Value::Null, ValueState::Damaged)
+        }
+    };
+    (value, state, keep_raw.then(|| bytes.into_owned()))
 }
 
 impl Iterator for Rows<'_> {
@@ -325,6 +399,98 @@ fn split_multi_value(data: &[u8], two_values: bool) -> Result<Vec<Item<'_>>, Str
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::ColumnType;
+
+    fn column(column_type: ColumnType) -> Column {
+        Column {
+            id: 1,
+            name: "c".to_owned(),
+            column_type,
+            codepage: 1252,
+            flags: 0,
+            max_size: 0,
+            record_offset: 4,
+            default: None,
+            from_template: false,
+        }
+    }
+
+    fn stored(bytes: &[u8]) -> Cow<'_, [u8]> {
+        Cow::Borrowed(bytes)
+    }
+
+    #[test]
+    fn each_value_says_how_it_was_read() {
+        let long = column(ColumnType::Long);
+        let mut problems = Vec::new();
+        let one = 1i32.to_le_bytes();
+        assert_eq!(
+            cell(&long, Ok(Some(stored(&one))), true, &mut problems),
+            (Value::I32(1), ValueState::Parsed, Some(one.to_vec()))
+        );
+        assert_eq!(
+            cell(&long, Ok(Some(stored(&one))), false, &mut problems),
+            (Value::I32(1), ValueState::Parsed, None)
+        );
+        // NULL: no bytes, none made up
+        assert_eq!(
+            cell(&long, Ok(None), true, &mut problems),
+            (Value::Null, ValueState::Null, None)
+        );
+        assert_eq!(problems, Vec::<String>::new());
+        // stored but not decodable: its bytes, and the problem
+        assert_eq!(
+            cell(&long, Ok(Some(stored(&[1, 2]))), true, &mut problems),
+            (Value::Null, ValueState::Damaged, Some(vec![1, 2]))
+        );
+        // damage before any bytes could be read
+        assert_eq!(
+            cell(&long, Err("cut short".to_owned()), true, &mut problems),
+            (Value::Null, ValueState::Damaged, None)
+        );
+        assert_eq!(
+            problems,
+            ["2 bytes for a Long value of 4 bytes", "cut short"]
+        );
+        // no decoding for the type: its bytes
+        assert_eq!(
+            cell(
+                &column(ColumnType::Slv),
+                Ok(Some(stored(&[7]))),
+                true,
+                &mut problems
+            ),
+            (
+                Value::Binary(vec![7]),
+                ValueState::Unsupported,
+                Some(vec![7])
+            )
+        );
+        // the ends of the ranges, whole
+        let max = u64::MAX.to_le_bytes();
+        assert_eq!(
+            cell(
+                &column(ColumnType::UnsignedLongLong),
+                Ok(Some(stored(&max))),
+                false,
+                &mut problems
+            )
+            .0,
+            Value::U64(u64::MAX)
+        );
+        let min = i64::MIN.to_le_bytes();
+        assert_eq!(
+            cell(
+                &column(ColumnType::LongLong),
+                Ok(Some(stored(&min))),
+                false,
+                &mut problems
+            )
+            .0,
+            Value::I64(i64::MIN)
+        );
+        assert_eq!(problems.len(), 2);
+    }
 
     #[test]
     fn multi_values_follow_their_offsets() {

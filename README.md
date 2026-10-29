@@ -50,6 +50,7 @@ What the fork adds and fixes:
 | SRUM: ids keep their type (`IdKind`: program, service, packaged app, SID, object), `!!name!time!x!description` names are split (`AppName`), a `UserId` resolves only to a SID | fork |
 | SRUM: interface types from `InterfaceLuid` (`interface_type_name`) | Windows' ipifcons.h |
 | SRUM: account and wireless network names from the `SOFTWARE` hive (`read_with`, `Context`; the caller reads the hive) | fork |
+| ESE and SRUM: how each value was read (`ValueState`: parsed, NULL, a type with no decoding, stored but damaged, no such column) and the bytes it was read from (`Rows::keep_raw`; `read_with_options`, `Options`), so a NULL can be told from a value that couldn't be read | fork |
 | SRUM: `TimeStamp` rounded to the millisecond; a local `Time` replaces sootmark-common's, so `ese` is the only dependency | fork |
 | SRUM: a missing or damaged `SruDbIdMapTable` no longer fails the database; `dirty`, `tables` (every table and its rows) and unresolved ids are reported | fork |
 | Tests on three real databases (Windows 11 left dirty, Windows 10, Windows Server 2022; DFIRArtifactMuseum, MIT), every entry checked | fork |

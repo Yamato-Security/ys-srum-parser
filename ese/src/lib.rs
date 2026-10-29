@@ -56,7 +56,7 @@ mod xpress;
 pub use header::{DatabaseState, FileType, Header, LogTime};
 pub use rows::{ROW_LONG_VALUE_LIMIT, Row, Rows};
 pub use schema::{Column, ColumnKind, ColumnType, Index, Table};
-pub use value::Value;
+pub use value::{Value, ValueState};
 
 use pager::Pages;
 
