@@ -31,13 +31,11 @@ and sootmark-srum 0.1.0 (Sootmark/srum aa16800). (@YamatoSecurity)
 #### Added
 - Six more provider tables: energy estimation, tagged energy, and Windows Server 2022's processor
   time, size in bytes, total and used, and network bytes (`Kind`, 14 in all), and `Kind::all`,
-  `Kind::table`, `Kind::time_columns` and `Kind::output_name`, SrumECmd's name for each table's
-  output.
+  `Kind::table`, `Kind::time_columns` and `Kind::output_name`, a name for each table's output.
 - More FILETIME columns read as times by `Entry::times`: the VFU provider's `StartTime` and
   `EndTime`, and the long-term energy table's `EventTimestamp`.
 - `Srum::ids` (`SruDbIdMapTable` with each id's type, `IdKind`), `Entry::app_kind`, and `AppName`:
-  `!!name!yyyy/MM/dd:HH:mm:ss!x!description` names split into a name, a time and a description, as
-  SrumECmd splits them.
+  `!!name!yyyy/MM/dd:HH:mm:ss!x!description` names split into a name, a time and a description.
 - `interface_type` and `interface_type_name`: the IANA interface type an `InterfaceLuid` holds
   (`Entry::interface_type`).
 - `read_with` and `Context`: account names (`Entry::user_name`) and wireless network names
@@ -49,7 +47,7 @@ and sootmark-srum 0.1.0 (Sootmark/srum aa16800). (@YamatoSecurity)
   dissect.esedb's values.
 
 #### Changed
-- `TimeStamp` is rounded to the millisecond, as SrumECmd (.NET's `DateTime.FromOADate`) rounds it.
+- `TimeStamp` is rounded to the millisecond, as .NET's `DateTime.FromOADate` rounds it.
 - `Entry::app` is an `AppName`; a `UserId` resolves only to an id that is a SID.
 - `Entry::times` gives `None` for a value that is not a time: 0 and the maximum (sootmark-common's
   not-set and sentinel times) and negative values (left out before).

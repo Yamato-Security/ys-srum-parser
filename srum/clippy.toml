@@ -1,2 +1,2 @@
 # Domain vocabulary that is prose, not code.
-doc-valid-idents = ["SRUDB", "SrumECmd", "DFIRArtifactMuseum", ".."]
+doc-valid-idents = ["SRUDB", "DFIRArtifactMuseum", ".."]

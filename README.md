@@ -10,7 +10,7 @@ updated for what the fork changed.
 | Crate | Library | What it reads |
 | --- | --- | --- |
 | [`ys-srum-parser-ese`](ese/) | `ese` | ESE databases: header, checksums, B+-trees, the catalog, records, long values, compressed values |
-| [`ys-srum-parser`](srum/) | `srum` | `SRUDB.dat`: every provider table, with programs, accounts, times and interfaces decoded as SrumECmd decodes them |
+| [`ys-srum-parser`](srum/) | `srum` | `SRUDB.dat`: every provider table, with programs, accounts, times and interfaces decoded |
 
 ## Why these crates
 
@@ -32,13 +32,11 @@ The ESE readers in Rust, on the 56,292 rows of those databases' SRUM tables:
 | ese-parser 0.1.0 (icedracon) | – | header and raw pages only |
 
 For the SRUM layer, sootmark-srum's model (every table and column kept from the catalog, unknown
-tables still read, NULL kept apart from 0) was the base, and Eric Zimmerman's
-[SrumECmd](https://github.com/EricZimmerman/Srum) (MIT, C#, Windows only) the reference for what an
-examiner expects: its tables, its names for them, how it splits `!!` program names, which columns
-are FILETIMEs, interface types, and the names the `SOFTWARE` hive gives accounts and wireless
-networks. Those conventions are written afresh here. chainsaw's SRUM output (GPL-3.0, through
-libesedb) truncates `TimeStamp` to the second, so 738 entries of its own test database come out a
-second early; SrumECmd rounds to the millisecond, as this crate does.
+tables still read, NULL kept apart from 0) was the base, extended with what an examiner expects:
+the provider tables and names for them, `!!` program names split up, every FILETIME column read as
+a time, interface types, and the names the `SOFTWARE` hive gives accounts and wireless networks.
+chainsaw's SRUM output (GPL-3.0, through libesedb) truncates `TimeStamp` to the second, so 738
+entries of its own test database come out a second early; this crate rounds to the millisecond.
 
 What the fork adds and fixes:
 
@@ -47,12 +45,12 @@ What the fork adds and fixes:
 | ESE: column type 18 (`UnsignedLongLong`, Windows 10 and later) read as `Value::U64`, not binary | fork (found in review) |
 | ESE: a row reads at most 256 MiB of long values (`Rows::long_value_limit`): a crafted row referring to one long value many times made a copy per reference | fork (found in review) |
 | ESE: Xpress match lengths saturate (they overflowed on 32-bit targets) | fork (found in review) |
-| SRUM: 14 provider tables known (8 before), Windows Server 2022's four among them; `Kind::output_name` is SrumECmd's name for each | SrumECmd's conventions |
-| SRUM: every FILETIME column read as a time (`Entry::times`: `ConnectStartTime`, `EventTimestamp`, the timeline's `EndTime`, the VFU provider's `StartTime`/`EndTime`) | SrumECmd |
-| SRUM: ids keep their type (`IdKind`: program, service, packaged app, SID, object), `!!name!time!x!description` names are split (`AppName`), a `UserId` resolves only to a SID | SrumECmd |
-| SRUM: interface types from `InterfaceLuid` (`interface_type_name`) | SrumECmd, Windows' ipifcons.h |
-| SRUM: account and wireless network names from the `SOFTWARE` hive (`read_with`, `Context`; the caller reads the hive) | SrumECmd |
-| SRUM: `TimeStamp` rounded to the millisecond as SrumECmd rounds it; a local `Time` replaces sootmark-common's, so `ese` is the only dependency | fork |
+| SRUM: 14 provider tables known (8 before), Windows Server 2022's four among them; `Kind::output_name` names each | fork |
+| SRUM: every FILETIME column read as a time (`Entry::times`: `ConnectStartTime`, `EventTimestamp`, the timeline's `EndTime`, the VFU provider's `StartTime`/`EndTime`) | fork |
+| SRUM: ids keep their type (`IdKind`: program, service, packaged app, SID, object), `!!name!time!x!description` names are split (`AppName`), a `UserId` resolves only to a SID | fork |
+| SRUM: interface types from `InterfaceLuid` (`interface_type_name`) | Windows' ipifcons.h |
+| SRUM: account and wireless network names from the `SOFTWARE` hive (`read_with`, `Context`; the caller reads the hive) | fork |
+| SRUM: `TimeStamp` rounded to the millisecond; a local `Time` replaces sootmark-common's, so `ese` is the only dependency | fork |
 | SRUM: a missing or damaged `SruDbIdMapTable` no longer fails the database; `dirty`, `tables` (every table and its rows) and unresolved ids are reported | fork |
 | Tests on three real databases (Windows 11 left dirty, Windows 10, Windows Server 2022; DFIRArtifactMuseum, MIT), every entry checked | fork |
 | One workspace and one CI (Linux, macOS, Windows, MSRV, wasm32, cargo-deny), actions pinned by commit | fork |
