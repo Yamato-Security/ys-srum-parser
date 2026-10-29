@@ -1,9 +1,9 @@
 //! The database file header: the first page of the file, with a copy (the
 //! shadow) in the second.
 
+use crate::Error;
 use crate::bytes::{array_at, u32_at, u64_at};
 use crate::checksum;
-use crate::Error;
 
 /// The file signature, at offset 4.
 pub(crate) const SIGNATURE: u32 = 0x89ab_cdef;

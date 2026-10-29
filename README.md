@@ -9,8 +9,8 @@ updated for what the fork changed.
 
 | Crate | Library | What it reads |
 | --- | --- | --- |
-| [`sootmark-ese`](ese/) | `ese` | ESE databases: header, checksums, B+-trees, the catalog, records, long values, compressed values |
-| [`sootmark-srum`](srum/) | `srum` | `SRUDB.dat`: every provider table, with programs, accounts, times and interfaces decoded as SrumECmd decodes them |
+| [`ys-srum-parser-ese`](ese/) | `ese` | ESE databases: header, checksums, B+-trees, the catalog, records, long values, compressed values |
+| [`ys-srum-parser`](srum/) | `srum` | `SRUDB.dat`: every provider table, with programs, accounts, times and interfaces decoded as SrumECmd decodes them |
 
 ## Why these crates
 
@@ -55,7 +55,8 @@ What the fork adds and fixes:
 | SRUM: `TimeStamp` rounded to the millisecond as SrumECmd rounds it; a local `Time` replaces sootmark-common's, so `ese` is the only dependency | fork |
 | SRUM: a missing or damaged `SruDbIdMapTable` no longer fails the database; `dirty`, `tables` (every table and its rows) and unresolved ids are reported | fork |
 | Tests on three real databases (Windows 11 left dirty, Windows 10, Windows Server 2022; DFIRArtifactMuseum, MIT), every entry checked | fork |
-| One workspace and one CI (Linux, macOS, Windows, MSRV 1.80, wasm32, cargo-deny), actions pinned by commit | fork |
+| One workspace and one CI (Linux, macOS, Windows, MSRV, wasm32, cargo-deny), actions pinned by commit | fork |
+| The crates named after the repository (`ys-srum-parser`, `ys-srum-parser-ese`), version 1.0.0, edition 2024, Rust 1.99 | fork |
 
 On the eleven databases, all 45,255 entries equal a decoding written independently from
 dissect.esedb's values: time, program, account, FILETIME columns and every other value. 1,100
@@ -76,12 +77,12 @@ if srum.dirty {
 }
 ```
 
-Use it from Cargo by commit (the crates keep the names `sootmark-ese` and `sootmark-srum` and their
-library names `ese` and `srum`; they are not published, and their versions from 0.2.0 are the
-fork's own):
+Use it from Cargo by commit (the crates are named after the repository, `ys-srum-parser` and
+`ys-srum-parser-ese`, and keep their library names, `srum` and `ese`; they are not published, and
+their versions are the fork's own: 1.0.0 since the rename; Rust 1.99, edition 2024):
 
 ```toml
-srum = { package = "sootmark-srum", git = "https://github.com/Yamato-Security/ys-srum-parser", rev = "<commit>" }
+srum = { package = "ys-srum-parser", git = "https://github.com/Yamato-Security/ys-srum-parser", rev = "<commit>" }
 ```
 
 Not yet: replaying the transaction logs (`SRU*.log`) into a dirty database; recovering deleted

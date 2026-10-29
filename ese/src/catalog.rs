@@ -208,7 +208,9 @@ impl Entry {
 /// The column identifiers of an index key (`KeyFldIDs`).
 fn key_columns(bytes: &[u8]) -> Vec<u32> {
     bytes
-        .chunks_exact(KEY_COLUMN_SIZE)
+        .as_chunks::<KEY_COLUMN_SIZE>()
+        .0
+        .iter()
         .filter_map(|entry| u16_at(entry, KEY_COLUMN_ID_OFFSET).map(u32::from))
         .collect()
 }

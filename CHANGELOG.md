@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0 (Unreleased)
+
+### Changed
+- The crates are named after their repository: `ys-srum-parser` (was `sootmark-srum`; library
+  `srum`) and `ys-srum-parser-ese` (was `sootmark-ese`; library `ese`), version 1.0.0, by Florian
+  Amette and Zach Mathis (@yamatosecurity), on Rust's 2024 edition, and require Rust 1.99. Depend
+  on them as `srum = { package = "ys-srum-parser", … }`. (@YamatoSecurity)
+
 ## 0.2.0 (ys-srum-parser)
 
 First version of Yamato Security's fork, of both crates: sootmark-ese 0.1.1 (Sootmark/ese 3570ed9)

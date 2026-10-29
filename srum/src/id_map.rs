@@ -238,7 +238,9 @@ fn name(kind: IdKind, blob: &Value) -> Option<String> {
 /// UTF-16LE text, up to its first NUL.
 fn utf16(bytes: &[u8]) -> Option<String> {
     let units: Vec<u16> = bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
         .take_while(|&unit| unit != 0)
         .collect();
@@ -256,7 +258,9 @@ fn sid(bytes: &[u8]) -> Option<String> {
         .iter()
         .fold(0u64, |value, &byte| value << 8 | u64::from(byte));
     let subs = subs
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|sub| format!("-{}", u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]])));
     Some(format!("S-{revision}-{authority}") + &subs.collect::<String>())
 }

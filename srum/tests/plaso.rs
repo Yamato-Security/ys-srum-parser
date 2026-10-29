@@ -101,9 +101,10 @@ fn every_provider_table_is_read() {
     assert_eq!(srum.problems.len(), 1, "{:?}", srum.problems);
     assert!(srum.problems[0].ends_with("AppId / UserId values are not in SruDbIdMapTable"));
     // Every table is listed, provider or not.
-    assert!(srum
-        .tables
-        .iter()
-        .any(|t| t.name == "SruDbIdMapTable" && !t.provider && t.rows > 0));
+    assert!(
+        srum.tables
+            .iter()
+            .any(|t| t.name == "SruDbIdMapTable" && !t.provider && t.rows > 0)
+    );
     assert!(!srum.dirty);
 }

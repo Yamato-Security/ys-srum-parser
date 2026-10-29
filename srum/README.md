@@ -1,12 +1,12 @@
 # srum
 
-Windows' System Resource Usage Monitor (`Windows\System32\sru\SRUDB.dat`), for forensics: what each program did, hour by hour, for about a month. Bytes it sent and received on which network, CPU time and disk bytes in the foreground and background, network connections, energy, the application timeline. Evidence of exfiltration and of programs that ran, kept after they were deleted. Read with [`sootmark-ese`](../ese), a reader of ESE databases written from the format; no other dependency.
+Windows' System Resource Usage Monitor (`Windows\System32\sru\SRUDB.dat`), for forensics: what each program did, hour by hour, for about a month. Bytes it sent and received on which network, CPU time and disk bytes in the foreground and background, network connections, energy, the application timeline. Evidence of exfiltration and of programs that ran, kept after they were deleted. Read with [`ys-srum-parser-ese`](../ese), a reader of ESE databases written from the format; no other dependency.
 
 Part of [ys-srum-parser](https://github.com/Yamato-Security/ys-srum-parser), Yamato Security's fork of Sootmark's [srum](https://github.com/Sootmark/srum): decoded the way Eric Zimmerman's SrumECmd decodes it.
 
 ```toml
 [dependencies]
-srum = { package = "sootmark-srum", git = "https://github.com/Yamato-Security/ys-srum-parser", rev = "<commit>" }
+srum = { package = "ys-srum-parser", git = "https://github.com/Yamato-Security/ys-srum-parser", rev = "<commit>" }
 ```
 
 ```rust

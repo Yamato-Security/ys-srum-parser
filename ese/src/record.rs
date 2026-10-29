@@ -10,7 +10,7 @@
 //! offset says so, always on 16 and 32 KiB pages. Before revision 9 each
 //! tagged column is stored whole: identifier, size, flags byte, data.
 
-use crate::bytes::{slice_at, u16_at, u8_at};
+use crate::bytes::{slice_at, u8_at, u16_at};
 use crate::schema::{Column, FIRST_VARIABLE};
 
 /// Bytes of the record header.
@@ -236,7 +236,7 @@ impl<'a> Record<'a> {
     /// `None` takes either.
     pub(crate) fn tagged(&self, id: u32, derived: Option<bool>) -> Option<&Tagged<'a>> {
         self.tagged.iter().find(|tagged| {
-            tagged.id == id && derived.map_or(true, |derived| tagged.derived == derived)
+            tagged.id == id && derived.is_none_or(|derived| tagged.derived == derived)
         })
     }
 }

@@ -164,7 +164,9 @@ fn xor_words(bytes: &[u8], seed: u32) -> u32 {
 /// The little-endian 32-bit words of `bytes` (a partial last word ignored).
 fn words(bytes: &[u8]) -> impl Iterator<Item = u32> + '_ {
     bytes
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
 }
 
@@ -210,9 +212,11 @@ mod tests {
         let page = page_with_byte(9, 1000, 0x5a);
         assert_eq!(verify_page(&page, 9, false), None);
         // The page number seeds the XOR: the wrong page doesn't verify.
-        assert!(verify_page(&page, 10, false)
-            .unwrap()
-            .contains("XOR checksum mismatch"));
+        assert!(
+            verify_page(&page, 10, false)
+                .unwrap()
+                .contains("XOR checksum mismatch")
+        );
     }
 
     #[test]
