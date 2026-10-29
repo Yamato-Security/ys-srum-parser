@@ -43,7 +43,7 @@ mod time;
 use std::collections::HashMap;
 
 use ese::Database;
-pub use ese::Value;
+pub use ese::{Value, ValueState};
 
 pub use id_map::{AppName, Id, IdKind};
 pub use interface::{interface_type, interface_type_name};
@@ -261,6 +261,32 @@ pub struct Entry {
     pub profile_name: Option<String>,
     /// The table's other columns, by name, in table order.
     pub values: Vec<(String, Value)>,
+    /// Every column of the row, the common ones too, in table order: how
+    /// its value was read and its bytes. Empty unless
+    /// [`Options::value_states`].
+    pub cells: Vec<Cell>,
+}
+
+/// A column of an entry's row: how its value was read, and the bytes it was
+/// read from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cell {
+    /// The column.
+    pub column: String,
+    /// How its value was read: what a NULL stands for.
+    pub state: ValueState,
+    /// The bytes the value was decoded from, with [`Options::raw_values`];
+    /// `None` for a NULL, or damage before any bytes could be read.
+    pub raw: Option<Vec<u8>>,
+}
+
+/// What [`read_with_options`] keeps besides the values. Nothing by default.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Options {
+    /// How each value was read ([`Entry::cells`]).
+    pub value_states: bool,
+    /// The bytes each value was read from too ([`Cell::raw`]).
+    pub raw_values: bool,
 }
 
 impl Entry {
@@ -271,6 +297,33 @@ impl Entry {
             .iter()
             .find(|(column, _)| column == name)
             .map(|(_, value)| value)
+    }
+
+    /// How the value of column `name` was read, [`ValueState::Absent`] when
+    /// the table has no such column; `None` unless
+    /// [`Options::value_states`].
+    #[must_use]
+    pub fn state(&self, name: &str) -> Option<ValueState> {
+        if self.cells.is_empty() {
+            return None;
+        }
+        Some(
+            self.cells
+                .iter()
+                .find(|cell| cell.column == name)
+                .map_or(ValueState::Absent, |cell| cell.state),
+        )
+    }
+
+    /// The bytes column `name`'s value was read from, with
+    /// [`Options::raw_values`]; `None` for a NULL.
+    #[must_use]
+    pub fn raw(&self, name: &str) -> Option<&[u8]> {
+        self.cells
+            .iter()
+            .find(|cell| cell.column == name)?
+            .raw
+            .as_deref()
     }
 
     /// The columns that hold times besides `TimeStamp`, read as UTC
@@ -354,6 +407,15 @@ pub fn read(data: &[u8]) -> Result<Srum, Error> {
 /// # Errors
 /// When it isn't an ESE database.
 pub fn read_with(data: &[u8], context: &Context) -> Result<Srum, Error> {
+    read_with_options(data, context, &Options::default())
+}
+
+/// [`read_with`], keeping what `options` asks for besides the values: how
+/// each was read, and the bytes it was read from.
+///
+/// # Errors
+/// When it isn't an ESE database.
+pub fn read_with_options(data: &[u8], context: &Context, options: &Options) -> Result<Srum, Error> {
     let db = Database::open(data).map_err(|e| Error(e.to_string()))?;
     let mut problems = db.problems.clone();
     let ids = IdMap::read(&db, &mut problems);
@@ -369,7 +431,7 @@ pub fn read_with(data: &[u8], context: &Context) -> Result<Srum, Error> {
             rows: 0,
         };
         let mut rows = match db.rows(&table.name) {
-            Ok(rows) => rows,
+            Ok(rows) => rows.keep_raw(options.raw_values),
             Err(error) => {
                 problems.push(format!("{}: {error}", table.name));
                 tables.push(info);
@@ -379,7 +441,7 @@ pub fn read_with(data: &[u8], context: &Context) -> Result<Srum, Error> {
         for row in &mut rows {
             info.rows += 1;
             if provider {
-                let entry = entry(table, &row.values, &ids, context);
+                let entry = entry(table, &row, &ids, context, *options);
                 unresolved += usize::from(entry.app_id.is_some() && entry.app.is_none())
                     + usize::from(entry.user_id.is_some() && entry.user.is_none());
                 entries.push(entry);
@@ -413,7 +475,14 @@ fn is_provider(table: &ese::Table) -> bool {
         .all(|column| table.column_index(column).is_some())
 }
 
-fn entry(table: &ese::Table, values: &[Value], ids: &IdMap, context: &Context) -> Entry {
+fn entry(
+    table: &ese::Table,
+    row: &ese::Row,
+    ids: &IdMap,
+    context: &Context,
+    options: Options,
+) -> Entry {
+    let values = &row.values;
     let get = |name: &str| table.column_index(name).and_then(|at| values.get(at));
     let integer = |name: &str| get(name).and_then(Value::as_i64);
     let app_id = integer("AppId");
@@ -450,5 +519,19 @@ fn entry(table: &ese::Table, values: &[Value], ids: &IdMap, context: &Context) -
             .filter(|(column, _)| !COMMON_COLUMNS.contains(&column.name.as_str()))
             .map(|(column, value)| (column.name.clone(), value.clone()))
             .collect(),
+        cells: if options.value_states || options.raw_values {
+            table
+                .columns
+                .iter()
+                .enumerate()
+                .map(|(at, column)| Cell {
+                    column: column.name.clone(),
+                    state: row.states.get(at).copied().unwrap_or(ValueState::Damaged),
+                    raw: row.raw.get(at).cloned().flatten(),
+                })
+                .collect()
+        } else {
+            Vec::new()
+        },
     }
 }

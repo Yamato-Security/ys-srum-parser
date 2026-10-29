@@ -8,6 +8,16 @@
   Amette and Zach Mathis (@yamatosecurity), on Rust's 2024 edition, and require Rust 1.99. Depend
   on them as `srum = { package = "ys-srum-parser", … }`. (@YamatoSecurity)
 
+### Added
+- ESE: `ValueState`, how each value of a row was read (`Row::states`, `Row::state`): parsed, NULL in
+  the database, of a type with no decoding, or stored but not read (damage, with its problem), and
+  `Absent` for a name the table hasn't. `Value::Null` stood for all of them. With
+  `Rows::keep_raw`, the bytes each value was decoded from (`Row::raw`); none for a NULL.
+  (@YamatoSecurity)
+- SRUM: `read_with_options` and `Options` (`value_states`, `raw_values`): each entry's `cells`,
+  with `Entry::state` and `Entry::raw` by column name. Off by default, so `read` and `read_with`
+  keep what they used to. (@YamatoSecurity)
+
 ## 0.2.0 (ys-srum-parser)
 
 First version of Yamato Security's fork, of both crates: sootmark-ese 0.1.1 (Sootmark/ese 3570ed9)
