@@ -9,7 +9,7 @@
 //!
 //! [MS-XCA]: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-xca/
 
-use crate::bytes::{u16_at, u32_at, u8_at};
+use crate::bytes::{u8_at, u16_at, u32_at};
 
 /// Items per flag word.
 const FLAG_BITS: u32 = 32;
@@ -184,11 +184,22 @@ mod tests {
     fn streams_libfwnt_decodes() {
         let vectors = [
             (
-                [&b"In ESE, compressed values: "[..], &b"abc".repeat(20), b"xyz"].concat(),
+                [
+                    &b"In ESE, compressed values: "[..],
+                    &b"abc".repeat(20),
+                    b"xyz",
+                ]
+                .concat(),
                 "02000000496e204553452c20636f6d707265737365642076616c7565733a2061626317000f2078ffffff3f797a",
             ),
             (
-                [&b"0123456789".repeat(3)[..], b"ABCDEFGHIJ", &b"0123456789".repeat(4), &b"ABCDEFGHIJ".repeat(3)].concat(),
+                [
+                    &b"0123456789".repeat(3)[..],
+                    b"ABCDEFGHIJ",
+                    &b"0123456789".repeat(4),
+                    &b"ABCDEFGHIJ".repeat(3),
+                ]
+                .concat(),
                 "ff072000303132333435363738394f00fa4142434445464748494a3f01058f01aa4f00",
             ),
             (vec![0; 5000], "ffffff7f0007000fff8413"),

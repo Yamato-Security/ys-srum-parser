@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 
 use crate::btree::{Cursor, Entry};
-use crate::bytes::{u16_at, u8_at};
+use crate::bytes::{u8_at, u16_at};
 use crate::compression;
 use crate::long_value::LongValues;
 use crate::pager::Pages;

@@ -6,7 +6,7 @@ Part of [ys-srum-parser](https://github.com/Yamato-Security/ys-srum-parser), Yam
 
 ```toml
 [dependencies]
-ese = { package = "sootmark-ese", git = "https://github.com/Yamato-Security/ys-srum-parser", rev = "<commit>" }
+ese = { package = "ys-srum-parser-ese", git = "https://github.com/Yamato-Security/ys-srum-parser", rev = "<commit>" }
 ```
 
 ```rust

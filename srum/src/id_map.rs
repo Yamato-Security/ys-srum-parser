@@ -11,8 +11,7 @@ use crate::time::Time;
 
 const TABLE: &str = "SruDbIdMapTable";
 
-/// What an id in `SruDbIdMapTable` names (its `IdType`; SrumECmd's
-/// `MapType`).
+/// What an id in `SruDbIdMapTable` names (its `IdType`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IdKind {
     /// 0: a program, by path (`\Device\HarddiskVolume2\…\a.exe`) or as
@@ -43,7 +42,7 @@ impl IdKind {
         }
     }
 
-    /// SrumECmd's name of the kind: `NormalApp`, `Service`, `ModernApp`,
+    /// The kind's name: `NormalApp`, `Service`, `ModernApp`,
     /// `Sid`, `Object`.
     #[must_use]
     pub fn name(self) -> String {
@@ -71,14 +70,14 @@ pub struct Id {
 }
 
 /// A program's name, with the `!!name!yyyy/MM/dd:HH:mm:ss!x!description`
-/// form some ids have split up (as SrumECmd does).
+/// form some ids have split up.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppName {
-    /// The path or name (`ExeInfo`).
+    /// The path or name.
     pub name: String,
-    /// The description after the last `!` (`ExeInfoDescription`).
+    /// The description after the last `!`.
     pub description: Option<String>,
-    /// The time in the `!!` form (`ExeTimestamp`), UTC.
+    /// The time in the `!!` form, UTC.
     pub time: Option<Time>,
     /// The field between the time and the description.
     pub unknown: Option<String>,
@@ -86,9 +85,9 @@ pub struct AppName {
 
 impl AppName {
     /// `text`, split up when it has the `!!` form: a name (which may itself
-    /// contain `!`), a time, an unknown field and a description. (SrumECmd
-    /// adds a `!` for every empty field of a name, so it reads a name `!`
-    /// as `!!`; here the fields are joined back as they were split.)
+    /// contain `!`), a time, an unknown field and a description. The fields
+    /// of a name are joined back as they were split, so a name `!` stays
+    /// `!`.
     #[must_use]
     pub fn parse(text: &str) -> Self {
         let plain = || Self {
@@ -238,7 +237,9 @@ fn name(kind: IdKind, blob: &Value) -> Option<String> {
 /// UTF-16LE text, up to its first NUL.
 fn utf16(bytes: &[u8]) -> Option<String> {
     let units: Vec<u16> = bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
         .take_while(|&unit| unit != 0)
         .collect();
@@ -256,7 +257,9 @@ fn sid(bytes: &[u8]) -> Option<String> {
         .iter()
         .fold(0u64, |value, &byte| value << 8 | u64::from(byte));
     let subs = subs
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|sub| format!("-{}", u32::from_le_bytes([sub[0], sub[1], sub[2], sub[3]])));
     Some(format!("S-{revision}-{authority}") + &subs.collect::<String>())
 }

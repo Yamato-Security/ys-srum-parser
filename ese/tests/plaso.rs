@@ -93,7 +93,7 @@ fn srum_network_usage_application_usage_and_connectivity() {
         ole_unix_millis(connectivity, row, "TimeStamp"),
         1_509_888_780_000
     ); // 13:33:00
-       // 2017-11-05T10:30:48.1679714, a FILETIME.
+    // 2017-11-05T10:30:48.1679714, a FILETIME.
     assert_eq!(
         integer(connectivity, row, "ConnectStartTime"),
         131_543_514_481_679_714

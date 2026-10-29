@@ -182,9 +182,8 @@ impl Kind {
         }
     }
 
-    /// The name SrumECmd gives the provider's output
-    /// (`<time>_SrumECmd_<name>_Output.csv`); the two energy usage tables
-    /// share `EnergyUsage`.
+    /// A name for the provider's output (a file of its entries, say); the
+    /// two energy usage tables share `EnergyUsage`.
     #[must_use]
     pub const fn output_name(self) -> &'static str {
         match self {
@@ -241,7 +240,7 @@ pub struct Entry {
     /// `AutoIncId`.
     pub id: Option<i64>,
     /// `TimeStamp`: when the figures were recorded (UTC, rounded to the
-    /// millisecond as SrumECmd does).
+    /// millisecond).
     pub time: Option<Time>,
     /// `AppId`, as written.
     pub app_id: Option<i64>,

@@ -6,5 +6,5 @@ resolver = "2"
 # reader keep the test run short.
 [profile.dev.package.sootmark-common]
 opt-level = 3
-[profile.dev.package.sootmark-ese]
+[profile.dev.package.ys-srum-parser-ese]
 opt-level = 3

@@ -7,7 +7,7 @@ pub fn interface_type(luid: i64) -> u16 {
     (luid as u64 >> 48) as u16
 }
 
-/// The `IF_TYPE_*` name of an interface type (as SrumECmd names them), or
+/// The `IF_TYPE_*` name of an interface type, or
 /// `None` for one ipifcons.h does not define.
 #[must_use]
 pub fn interface_type_name(if_type: u16) -> Option<&'static str> {

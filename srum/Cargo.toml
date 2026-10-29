@@ -1,12 +1,13 @@
 [package]
-name = "sootmark-srum"
-version = "0.2.0"
+name = "ys-srum-parser"
+version = "1.0.0"
+authors = ["Florian Amette", "Zach Mathis (@yamatosecurity)"]
 # Yamato Security's fork of the upstream crate (https://github.com/Sootmark/srum): not published
 # under the upstream name.
 publish = false
-edition = "2021"
-rust-version = "1.80"
-description = "Windows System Resource Usage Monitor (SRUM, SRUDB.dat) for forensics: every provider table (network and application usage, connectivity, energy, the application timeline, Windows Server's tables) per program and user, decoded as SrumECmd does, read with sootmark-ese."
+edition = "2024"
+rust-version = "1.99"
+description = "Windows System Resource Usage Monitor (SRUM, SRUDB.dat) for forensics: every provider table (network and application usage, connectivity, energy, the application timeline, Windows Server's tables) per program and user, read with ys-srum-parser-ese."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Yamato-Security/ys-srum-parser"
 homepage = "https://github.com/Yamato-Security/ys-srum-parser"
@@ -18,7 +19,7 @@ include = ["/src", "/README.md", "/LICENSE-APACHE", "/LICENSE-MIT"]
 name = "srum"
 
 [dependencies]
-ese = { package = "sootmark-ese", path = "../ese", version = "0.2" }
+ese = { package = "ys-srum-parser-ese", path = "../ese", version = "1.0" }
 
 [dev-dependencies]
 # gzip, for the test databases stored compressed.
