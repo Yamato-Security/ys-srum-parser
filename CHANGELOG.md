@@ -3,6 +3,11 @@
 ## 1.0.0 (Unreleased)
 
 ### Changed
+- License: ys-srum-parser is now copyright Shirofune Security Co., Ltd. and released under the
+  Reciprocal Public License 1.5 (RPL-1.5) instead of MIT OR Apache-2.0. Upstream's code stays under
+  MIT OR Apache-2.0 (`LICENSE-MIT`, `LICENSE-APACHE`). Every Rust file carries the copyright and the
+  RPL License Notice; those changed from upstream also name it, with its copyright and license.
+  (@YamatoSecurity)
 - The crates are named after their repository: `ys-srum-parser` (was `sootmark-srum`; library
   `srum`) and `ys-srum-parser-ese` (was `sootmark-ese`; library `ese`), version 1.0.0, by Florian
   Amette and Zach Mathis (@yamatosecurity), on Rust's 2024 edition, and require Rust 1.99. Depend
