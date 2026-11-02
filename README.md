@@ -4,8 +4,8 @@ Yamato Security's maintained fork of Sootmark's [ese](https://github.com/Sootmar
 [srum](https://github.com/Sootmark/srum) crates (Florian Amette): a reader of ESE ("JET Blue")
 databases, and on it the Windows System Resource Usage Monitor (`SRUDB.dat`) parser used by
 [Juntei](https://github.com/Yamato-Security/juntei). Both upstream histories are kept (imported into
-`ese/` and `srum/`), with their MIT OR Apache-2.0 license; each crate's README is upstream's,
-updated for what the fork changed.
+`ese/` and `srum/`), and their code stays under its MIT OR Apache-2.0 license (see
+[Licence](#licence)); each crate's README is upstream's, updated for what the fork changed.
 
 | Crate | Library | What it reads |
 | --- | --- | --- |
@@ -91,6 +91,12 @@ but no openly licensed one has been tested.
 
 ## Licence
 
-MIT or Apache-2.0, at your option (`LICENSE-MIT`, `LICENSE-APACHE`). The test databases keep their
-licences: plaso's (Apache-2.0) and DFIRArtifactMuseum's (MIT), each with its licence beside it.
-libesedb and dissect.esedb were only run to write the expected values, never included.
+ys-srum-parser is copyright Shirofune Security Co., Ltd. and released under the [Reciprocal Public
+License 1.5](LICENSE) (RPL-1.5), whose text is also in `ese/` and `srum/`; its source code was
+published under MIT OR Apache-2.0 before version 1.0.0. It is changed from
+[Sootmark/ese](https://github.com/Sootmark/ese) and
+[Sootmark/srum](https://github.com/Sootmark/srum) (copyright Cyber Experts), whose code stays under
+the MIT License or the Apache License 2.0 (`LICENSE-MIT`, `LICENSE-APACHE`): each Rust file changed
+from them says so in its header. The test databases keep their licences: plaso's (Apache-2.0) and
+DFIRArtifactMuseum's (MIT), each with its licence beside it. libesedb and dissect.esedb were only
+run to write the expected values, never included.
