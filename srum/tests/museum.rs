@@ -66,7 +66,7 @@ fn check(name: &str) -> Srum {
     assert_eq!(srum.entries.len(), expected.len());
     for entry in &srum.entries {
         let want = &expected[&(entry.table.clone(), entry.id.unwrap())];
-        let iso = |time: Option<Time>| time.map(Time::to_iso8601).unwrap_or_default();
+        let iso = |time: Option<Time>| time.map_or_default(Time::to_iso8601);
         // the expected name is the whole IdBlob; the entry splits the `!!` form
         let app = entry.app.as_ref().map_or(String::new(), |app| {
             if want[3].starts_with("!!") {

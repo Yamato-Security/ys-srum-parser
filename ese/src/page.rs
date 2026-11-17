@@ -211,7 +211,7 @@ impl<'a> Page<'a> {
         if self.flags().is_root() {
             return &[];
         }
-        self.tag(0).map(|(value, _)| value).unwrap_or_default()
+        self.tag(0).map_or_default(|(value, _)| value)
     }
 
     /// Entry `index` (1 and up: tag 0 is the page's header value).
