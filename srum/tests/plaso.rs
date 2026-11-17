@@ -39,7 +39,7 @@ fn srum() -> Srum {
 }
 
 fn iso(time: Option<Time>) -> String {
-    time.map(Time::to_iso8601).unwrap_or_default()
+    time.map_or_default(Time::to_iso8601)
 }
 
 fn app(entry: &Entry) -> Option<&str> {
