@@ -23,6 +23,13 @@
 //! doesn't fit its page. Every page is visited at most once per walk, so a
 //! walk ends, and memory stays proportional to the file. Defunct entries
 //! (deleted, not yet cleaned up) are skipped, as ESE skips them.
+//!
+//! Leaf pages also link to their right-hand siblings. After a dirty shutdown
+//! the branch pages on disk can be older than the leaves below them: leaves
+//! added after the branch page was last written are reached by no branch
+//! entry, only by the sibling link of the leaf before them. When the branch
+//! walk ends, the last leaf's link is followed for as long as it points at
+//! unvisited leaves of this tree, and the gap is reported.
 
 use std::collections::HashSet;
 
@@ -51,6 +58,13 @@ pub(crate) struct Cursor<'a> {
     object_id: Option<u32>,
     stack: Vec<Frame<'a>>,
     visited: HashSet<u32>,
+    /// The sibling link of the last leaf page entered: where the leaf chain
+    /// goes on once the branch pages are exhausted.
+    chain_next: u32,
+    /// Leaf pages read through the sibling chain, and whether their count
+    /// was reported.
+    chained: u32,
+    chain_reported: bool,
     /// What went wrong on the way, in the order met.
     pub(crate) problems: Vec<String>,
 }
@@ -62,6 +76,9 @@ impl<'a> Cursor<'a> {
             object_id: None,
             stack: Vec::new(),
             visited: HashSet::new(),
+            chain_next: 0,
+            chained: 0,
+            chain_reported: false,
             problems: Vec::new(),
         };
         cursor.descend(root);
@@ -131,36 +148,60 @@ impl<'a> Cursor<'a> {
 
     /// The next leaf entry in key order, or `None` at the end of the tree.
     pub(crate) fn next_entry(&mut self) -> Option<Entry<'a>> {
-        while let Some(frame) = self.stack.last_mut() {
-            if frame.next_tag >= frame.tag_count {
-                self.stack.pop();
-                continue;
-            }
-            let index = frame.next_tag;
-            frame.next_tag += 1;
-            let page = frame.page;
-            let node = match page.node(index) {
-                Ok(node) => node,
-                Err(problem) => {
-                    self.problems.push(problem);
+        loop {
+            while let Some(frame) = self.stack.last_mut() {
+                if frame.next_tag >= frame.tag_count {
+                    self.stack.pop();
                     continue;
                 }
-            };
-            if node.flags.is_defunct() {
-                continue;
+                let index = frame.next_tag;
+                frame.next_tag += 1;
+                let page = frame.page;
+                let node = match page.node(index) {
+                    Ok(node) => node,
+                    Err(problem) => {
+                        self.problems.push(problem);
+                        continue;
+                    }
+                };
+                if node.flags.is_defunct() {
+                    continue;
+                }
+                if page.flags().is_leaf() {
+                    self.chain_next = page.next_page();
+                    return Some(Entry {
+                        page: page.number,
+                        node,
+                    });
+                }
+                match page.child(&node) {
+                    Ok(child) => self.descend(child),
+                    Err(problem) => self.problems.push(problem),
+                }
             }
-            if page.flags().is_leaf() {
-                return Some(Entry {
-                    page: page.number,
-                    node,
-                });
+            // The branch pages are exhausted. A sibling link from the last leaf to a page no
+            // branch entry reached means the tree grew after that branch page was written.
+            let next = std::mem::take(&mut self.chain_next);
+            if next == 0 || self.visited.contains(&next) {
+                if self.chained > 0 && !self.chain_reported {
+                    self.chain_reported = true;
+                    self.problems.push(format!(
+                        "{} leaf pages were read through the sibling chain; no branch page \
+                         reaches them",
+                        self.chained
+                    ));
+                }
+                return None;
             }
-            match page.child(&node) {
-                Ok(child) => self.descend(child),
-                Err(problem) => self.problems.push(problem),
+            if self.chained == 0 {
+                self.problems.push(format!(
+                    "page {next}: a leaf page no branch page reaches; the branch pages are older \
+                     than the leaves (a dirty shutdown), so the leaf chain is followed from here"
+                ));
             }
+            self.chained += 1;
+            self.descend(next);
         }
-        None
     }
 }
 

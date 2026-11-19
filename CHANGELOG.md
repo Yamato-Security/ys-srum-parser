@@ -13,6 +13,13 @@
   Amette and Zach Mathis (@yamatosecurity), on Rust's 2024 edition, and require Rust 1.99. Depend
   on them as `srum = { package = "ys-srum-parser", … }`. (@YamatoSecurity)
 
+### Fixed
+- ESE: leaf pages that no branch page reaches are read. After a dirty shutdown the branch pages on
+  disk can be older than the leaves below them; the walk now follows the last leaf's sibling link
+  past the branch pages' last entry and reports the pages read that way. DFIRArtifactMuseum's
+  Windows 10 search index (`tests/fixtures/museum`, MIT) has 235 of its 930 property-store rows
+  only there. (@YamatoSecurity)
+
 ### Added
 - ESE: `ValueState`, how each value of a row was read (`Row::states`, `Row::state`): parsed, NULL in
   the database, of a type with no decoding, or stored but not read (damage, with its problem), and

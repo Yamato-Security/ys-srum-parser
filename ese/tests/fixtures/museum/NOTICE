@@ -1,0 +1,16 @@
+Windows.edb.gz is DFIRArtifactMuseum's Windows 10 search index, under the
+MIT License (LICENSE, in this directory). Copyright (c) 2022 Andrew Rathbun.
+
+Source: https://github.com/AndrewRathbun/DFIRArtifactMuseum, at the tree
+b26e860e0168a47870da9ce8e7681b87691c7ab7:
+  Windows/WindowsSearchDB/Win10/APTSimulatorVM/Dirty/Windows.edb
+
+Stored gzip-compressed (gzip -9), otherwise unmodified. SHA-256 of the
+uncompressed file (25,165,824 bytes):
+
+  ff024095f2880817e64e0413d8b5760965bd8e5247ad163045426354aa589b5b
+
+The database was copied from a running system (a dirty shutdown): its
+SystemIndex_PropertyStore tree has 235 leaf rows that no branch page on
+disk reaches, only the leaf sibling chain; libesedb's esedbexport reads
+930 rows from it.
