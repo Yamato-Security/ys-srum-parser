@@ -15,8 +15,10 @@
 
 ### Fixed
 - ESE: leaf pages that no branch page reaches are read. After a dirty shutdown the branch pages on
-  disk can be older than the leaves below them; the walk now follows the last leaf's sibling link
-  past the branch pages' last entry and reports the pages read that way. DFIRArtifactMuseum's
+  disk can be older than the leaves below them; the walk follows sibling links both between
+  branch-referenced leaves and past the last one, preserving key order. Only leaves of the same
+  tree are accepted, broken links are reported, and empty or defunct-only leaves do not stop the
+  chain. Recovery counts include only successfully read leaves. DFIRArtifactMuseum's
   Windows 10 search index (`tests/fixtures/museum`, MIT) has 235 of its 930 property-store rows
   only there. (@YamatoSecurity)
 
