@@ -29,6 +29,8 @@ use crate::bytes::{slice_at, u16_at, u32_at};
 const HEADER_SIZE: usize = 40;
 const EXTENDED_HEADER_SIZE: usize = 80;
 /// Page header field offsets.
+/// The next page in a leaf page's sibling chain (zero at the end of the chain).
+const NEXT_PAGE: usize = 20;
 const FDP_OBJECT_ID: usize = 24;
 const TAG_COUNT: usize = 34;
 const FLAGS: usize = 36;
@@ -140,6 +142,11 @@ impl<'a> Page<'a> {
     /// The object identifier of the tree the page belongs to.
     pub(crate) fn fdp_object_id(&self) -> u32 {
         self.field(FDP_OBJECT_ID)
+    }
+
+    /// The next page in a leaf page's sibling chain, zero for the last leaf.
+    pub(crate) fn next_page(&self) -> u32 {
+        self.field(NEXT_PAGE)
     }
 
     /// Whether every byte is zero: a page never written.
