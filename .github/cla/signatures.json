@@ -1,4 +1,19 @@
 {
   "schema_version": 1,
-  "agreements": []
+  "agreements": [
+    {
+      "record_id": "cla-1.1-shirofune-security-20261120",
+      "cla_version": "1.1",
+      "cla_sha256": "b22ab57ec7a1020e4005241fbfd1ac59ab8d7ede0a34aef351597df8b2cc39bd",
+      "github_user_ids": [
+        43838376
+      ],
+      "github_logins": {
+        "43838376": "Shirofune-Security"
+      },
+      "verified_by_github_user_id": 43838376,
+      "verified_at": "2026-11-19T21:43:10Z",
+      "evidence_ref": "https://github.com/Yamato-Security/ys-srum-parser/pull/13#issuecomment-7023004141"
+    }
+  ]
 }
